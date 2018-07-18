@@ -524,7 +524,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 - (void)reportIncomingCallFrom:(NSString *)from withUUID:(NSUUID *)uuid {
-  CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:[from substringWithRange:NSMakeRange(7, from.length - 31)]];
+  CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value: from];
 
   CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
   callUpdate.remoteHandle = callHandle;
