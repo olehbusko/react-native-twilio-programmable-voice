@@ -524,6 +524,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 - (void)reportIncomingCallFrom:(NSString *)from withUUID:(NSUUID *)uuid {
+  NSArray *nameArray = [from componentsSeparatedByString:@"."];
   CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value: from];
 
   CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
@@ -532,6 +533,7 @@ RCT_REMAP_METHOD(getActiveCall,
   callUpdate.supportsHolding = YES;
   callUpdate.supportsGrouping = NO;
   callUpdate.supportsUngrouping = NO;
+  callUpdate.localizedCallerName = [nameArray objectAtIndex: 0];
   callUpdate.hasVideo = NO;
 
   [self.callKitProvider reportNewIncomingCallWithUUID:uuid update:callUpdate completion:^(NSError *error) {
