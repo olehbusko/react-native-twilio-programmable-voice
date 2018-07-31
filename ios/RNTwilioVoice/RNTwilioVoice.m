@@ -503,7 +503,7 @@ RCT_REMAP_METHOD(getActiveCall,
   CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:handle];
   CXStartCallAction *startCallAction = [[CXStartCallAction alloc] initWithCallUUID:uuid handle:callHandle];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:startCallAction];
-
+  NSArray *nameArray = [handle componentsSeparatedByString:@"_"];
   [self.callKitCallController requestTransaction:transaction completion:^(NSError *error) {
     if (error) {
       NSLog(@"StartCallAction transaction request failed: %@", [error localizedDescription]);
@@ -516,6 +516,7 @@ RCT_REMAP_METHOD(getActiveCall,
       callUpdate.supportsHolding = YES;
       callUpdate.supportsGrouping = NO;
       callUpdate.supportsUngrouping = NO;
+      callUpdate.localizedCallerName = [nameArray objectAtIndex: 0];
       callUpdate.hasVideo = NO;
 
       [self.callKitProvider reportCallWithUUID:uuid updated:callUpdate];
@@ -524,7 +525,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 - (void)reportIncomingCallFrom:(NSString *)from withUUID:(NSUUID *)uuid {
-  NSArray *nameArray = [from componentsSeparatedByString:@"."];
+  NSArray *nameArray = [[from substringWithRange:NSMakeRange(7, from.length - 7)] componentsSeparatedByString:@"_"];
   CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value: from];
 
   CXCallUpdate *callUpdate = [[CXCallUpdate alloc] init];
