@@ -9,16 +9,18 @@
 @import PushKit;
 @import CallKit;
 @import TwilioVoice;
+#import <UserNotifications/UserNotifications.h>
 
 @interface RNTwilioVoice () <PKPushRegistryDelegate, TVONotificationDelegate, TVOCallDelegate, CXProviderDelegate>
 @property (nonatomic, strong) NSString *deviceTokenString;
-
 @property (nonatomic, strong) PKPushRegistry *voipRegistry;
 @property (nonatomic, strong) TVOCallInvite *callInvite;
 @property (nonatomic, strong) TVOCall *call;
 @property (nonatomic, strong) void(^callKitCompletionCallback)(BOOL);
 @property (nonatomic, strong) CXProvider *callKitProvider;
 @property (nonatomic, strong) CXCallController *callKitCallController;
+@property (nonatomic, strong) RCTResponseSenderBlock noCallKitCallback;
+@property (nonatomic, assign) BOOL isChineseRegion;
 @end
 
 @implementation RNTwilioVoice {
@@ -27,6 +29,7 @@
   NSString *_tokenUrl;
   NSString *_token;
 }
+
 
 NSString * const StatePending = @"PENDING";
 NSString * const StateConnecting = @"CONNECTING";
@@ -108,9 +111,36 @@ RCT_EXPORT_METHOD(connect: (NSDictionary *)params) {
   }
 }
 
+RCT_EXPORT_METHOD(accept) {
+  TwilioVoice.audioEnabled = YES;
+  [TwilioVoice configureAudioSession];
+  self.call = [self.callInvite acceptWithDelegate:self];
+}
+
+RCT_EXPORT_METHOD(reject) {
+    TwilioVoice.audioEnabled = NO;
+    NSLog(@"reject");
+    if (self.callInvite) {
+        NSLog(@"callInvite reject");
+        [self sendEventWithName:@"callRejected" body:@"callRejected"];
+        [self.callInvite reject];
+        self.callInvite = nil;
+    } else if (self.call) {
+        NSLog(@"callInvite disconnect");
+        [self.call disconnect];
+    }
+}
+
+RCT_EXPORT_METHOD(setCallback:(RCTResponseSenderBlock)callback) {
+  self.noCallKitCallback = callback;
+  self.isChineseRegion = YES;
+}
+
 RCT_EXPORT_METHOD(disconnect) {
   NSLog(@"Disconnecting call");
-  [self performEndCallActionWithUUID:self.call.uuid];
+  [self.call disconnect];
+  TwilioVoice.audioEnabled = NO;
+  //[self performEndCallActionWithUUID:self.call.uuid];
 }
 
 RCT_EXPORT_METHOD(setMuted: (BOOL *)muted) {
@@ -264,6 +294,7 @@ RCT_REMAP_METHOD(getActiveCall,
 
 #pragma mark - TVONotificationDelegate
 - (void)callInviteReceived:(TVOCallInvite *)callInvite {
+    NSLog(@"callInviteReceived");
     if (callInvite.state == TVOCallInviteStatePending) {
       [self handleCallInviteReceived:callInvite];
     } else if (callInvite.state == TVOCallInviteStateCanceled) {
@@ -272,7 +303,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 - (void)handleCallInviteReceived:(TVOCallInvite *)callInvite {
-  NSLog(@"callInviteReceived:");
+  NSLog(@"handleCallInviteReceived");
   if (self.callInvite && self.callInvite == TVOCallInviteStatePending) {
     NSLog(@"Already a pending incoming call invite.");
     NSLog(@"  >> Ignoring call from %@", callInvite.from);
@@ -284,8 +315,39 @@ RCT_REMAP_METHOD(getActiveCall,
   }
 
   self.callInvite = callInvite;
-
-  [self reportIncomingCallFrom:callInvite.from withUUID:callInvite.uuid];
+  NSLog(@"callInvite set");
+  UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+  if (state == UIApplicationStateActive || state == UIApplicationStateInactive) {
+      NSLog(@"is active or inactive");
+      if (self.isChineseRegion) {
+          NSLog(@"isChineseRegion");
+          NSMutableArray<NSDictionary *> *empty = [NSMutableArray new];
+          self.noCallKitCallback(@[empty]);
+      } else {
+          [self reportIncomingCallFrom:callInvite.from withUUID:callInvite.uuid];
+      }
+  } else {
+      if (self.isChineseRegion) {
+          NSArray *nameArray = [[callInvite.from substringWithRange:NSMakeRange(7, callInvite.from.length - 7)] componentsSeparatedByString:@"_"];
+          NSString *message = [NSString stringWithFormat:@"%@ is calling you.", [nameArray objectAtIndex: 0]];
+          UNMutableNotificationContent *objNotificationContent = [[UNMutableNotificationContent alloc] init];
+          objNotificationContent.title = [NSString localizedUserNotificationStringForKey:@"Incoming call" arguments:nil];
+          objNotificationContent.body = [NSString localizedUserNotificationStringForKey:message arguments:nil];
+          objNotificationContent.sound = [UNNotificationSound defaultSound];
+          objNotificationContent.badge = @([[UIApplication sharedApplication] applicationIconBadgeNumber] + 1);
+          UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:callInvite.from content:objNotificationContent trigger:nil];
+          UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+          [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+              if (!error) {
+                  NSLog(@"Local Notification succeeded");
+              } else {
+                  NSLog(@"Local Notification failed");
+              }
+          }];
+      } else {
+          [self reportIncomingCallFrom:callInvite.from withUUID:callInvite.uuid];
+      }
+  }
 }
 
 - (void)handleCallInviteCanceled:(TVOCallInvite *)callInvite {
@@ -321,7 +383,7 @@ RCT_REMAP_METHOD(getActiveCall,
 #pragma mark - TVOCallDelegate
 - (void)callDidConnect:(TVOCall *)call {
   self.call = call;
-  self.callKitCompletionCallback(YES);
+ // self.callKitCompletionCallback(YES);
   self.callKitCompletionCallback = nil;
 
   NSMutableDictionary *callParams = [[NSMutableDictionary alloc] init];
@@ -496,6 +558,7 @@ RCT_REMAP_METHOD(getActiveCall,
 
 #pragma mark - CallKit Actions
 - (void)performStartCallActionWithUUID:(NSUUID *)uuid handle:(NSString *)handle {
+  NSLog(@"performStartCallActionWithUUID handle");
   if (uuid == nil || handle == nil) {
     return;
   }
@@ -504,6 +567,7 @@ RCT_REMAP_METHOD(getActiveCall,
   CXStartCallAction *startCallAction = [[CXStartCallAction alloc] initWithCallUUID:uuid handle:callHandle];
   CXTransaction *transaction = [[CXTransaction alloc] initWithAction:startCallAction];
   NSArray *nameArray = [handle componentsSeparatedByString:@"_"];
+
   [self.callKitCallController requestTransaction:transaction completion:^(NSError *error) {
     if (error) {
       NSLog(@"StartCallAction transaction request failed: %@", [error localizedDescription]);
@@ -525,6 +589,7 @@ RCT_REMAP_METHOD(getActiveCall,
 }
 
 - (void)reportIncomingCallFrom:(NSString *)from withUUID:(NSUUID *)uuid {
+  NSLog(@"reportIncomingCallFrom withUUID");
   NSArray *nameArray = [[from substringWithRange:NSMakeRange(7, from.length - 7)] componentsSeparatedByString:@"_"];
   CXHandle *callHandle = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value: from];
 
