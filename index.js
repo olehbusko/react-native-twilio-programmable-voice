@@ -56,9 +56,6 @@ const Twilio = {
         TwilioVoice.disconnect()
     },
     accept() {
-        if (Platform.OS === IOS) {
-            return
-        }
         TwilioVoice.accept()
     },
     reject() {
