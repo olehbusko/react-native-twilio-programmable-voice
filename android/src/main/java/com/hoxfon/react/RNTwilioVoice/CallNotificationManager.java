@@ -144,7 +144,7 @@ public class CallNotificationManager {
                         .setCategory(NotificationCompat.CATEGORY_CALL)
                         .setSmallIcon(R.drawable.ic_call_white_24dp)
                         .setContentTitle("Incoming call")
-                        .setContentText(callInvite.getFrom().split("_", -1)[0] + " is calling")
+                        .setContentText(callInvite.getFrom().substring(7, id.length()).split("_", -1)[0] + " is calling")
                         .setOngoing(true)
                         .setAutoCancel(true)
                         .setExtras(extras)
@@ -230,7 +230,7 @@ public class CallNotificationManager {
                         .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                         .setSmallIcon(R.drawable.ic_call_missed_white_24dp)
                         .setContentTitle("Missed call")
-                        .setContentText(callInvite.getFrom().split("_", -1)[0] + " called")
+                        .setContentText(callInvite.getFrom().substring(7, id.length()).split("_", -1)[0] + " called")
                         .setAutoCancel(true)
                         .setShowWhen(true)
                         .setExtras(extras)
@@ -245,7 +245,7 @@ public class CallNotificationManager {
         } else {
             inboxStyle.setBigContentTitle(String.valueOf(missedCalls) + " missed calls");
         }
-        inboxStyle.addLine("from: " +callInvite.getFrom().split("_", -1)[0]);
+        inboxStyle.addLine("from: " +callInvite.getFrom().substring(7, id.length()).split("_", -1)[0]);
         sharedPrefEditor.putInt(MISSED_CALLS_GROUP, missedCalls);
         sharedPrefEditor.commit();
 
