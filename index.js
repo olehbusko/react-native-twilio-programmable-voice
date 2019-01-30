@@ -61,8 +61,12 @@ const Twilio = {
     reject() {
         TwilioVoice.reject()
     },
+    getCountry() {
+        return TwilioVoice.country;
+    },
     isChinaLocale() {
-        return TwilioVoice.isChinaLocale()
+        var lowercase = TwilioVoice.country.toLowerCase();
+        return lowercase == 'cn' || lowercase == 'chn';
     },
     ignore() {
         if (Platform.OS === IOS) {

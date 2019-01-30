@@ -23,6 +23,11 @@
 @property (nonatomic, assign) BOOL isChineseRegion;
 @end
 
+static NSString *getCountryCode(NSLocale *locale, NSString *fallback) {
+    NSString *countryCode = [locale objectForKey:NSLocaleCountryCode];
+    return countryCode != nil ? countryCode : fallback;
+}
+
 @implementation RNTwilioVoice {
   NSMutableDictionary *_settings;
   NSMutableDictionary *_callParams;
@@ -42,6 +47,11 @@ NSString * const StateRejected = @"REJECTED";
   return dispatch_get_main_queue();
 }
 
++ (BOOL)requiresMainQueueSetup
+{
+    return YES;
+}
+
 RCT_EXPORT_MODULE()
 
 - (NSArray<NSString *> *)supportedEvents
@@ -57,6 +67,11 @@ RCT_EXPORT_MODULE()
   }
 
   [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (NSDictionary *)constantsToExport
+{
+  return @{ @"country": getCountryCode([NSLocale autoupdatingCurrentLocale], @"GB")};
 }
 
 RCT_EXPORT_METHOD(initWithAccessToken:(NSString *)token) {
@@ -134,17 +149,6 @@ RCT_EXPORT_METHOD(reject) {
     } else if (self.call) {
         NSLog(@"callInvite disconnect");
         [self.call disconnect];
-    }
-}
-
-RCT_REMAP_METHOD(isChinaLocale,
-                  resolver1:(RCTPromiseResolveBlock)resolve
-                  rejecter1:(RCTPromiseRejectBlock)reject) {
-    NSLocale *userLocale = [NSLocale currentLocale];
-    if([userLocale.countryCode containsString: @"CN"] || [userLocale.countryCode containsString: @"CHN"]) {
-        resolve(@"true");
-    } else {
-        resolve(@"false");
     }
 }
 
