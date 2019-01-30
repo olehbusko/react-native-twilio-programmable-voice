@@ -104,10 +104,16 @@ RCT_EXPORT_METHOD(connect: (NSDictionary *)params) {
   if (self.call && self.call.state == TVOCallStateConnected) {
     [self.call disconnect];
   } else {
-    NSUUID *uuid = [NSUUID UUID];
-    NSString *handle = [params valueForKey:@"To"];
     _callParams = [[NSMutableDictionary alloc] initWithDictionary:params];
-    [self performStartCallActionWithUUID:uuid handle:handle];
+    if (self.isChineseRegion) {
+        self.call = [TwilioVoice call:[self fetchAccessToken]
+                               params:_callParams
+                             delegate:self];
+    } else {
+        NSUUID *uuid = [NSUUID UUID];
+        NSString *handle = [params valueForKey:@"To"];
+        [self performStartCallActionWithUUID:uuid handle:handle];
+    }
   }
 }
 
