@@ -61,6 +61,9 @@ const Twilio = {
     reject() {
         TwilioVoice.reject()
     },
+    isChinaLocale() {
+        return TwilioVoice.isChinaLocale()
+    },
     ignore() {
         if (Platform.OS === IOS) {
             return

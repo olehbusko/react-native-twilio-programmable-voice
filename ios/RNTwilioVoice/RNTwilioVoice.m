@@ -137,10 +137,22 @@ RCT_EXPORT_METHOD(reject) {
     }
 }
 
-RCT_EXPORT_METHOD(setCallback:(RCTResponseSenderBlock)callback) {
-  self.noCallKitCallback = callback;
-  self.isChineseRegion = YES;
+RCT_REMAP_METHOD(isChinaLocale,
+                  resolver1:(RCTPromiseResolveBlock)resolve
+                  rejecter1:(RCTPromiseRejectBlock)reject) {
+    NSLocale *userLocale = [NSLocale currentLocale];
+    if([userLocale.countryCode containsString: @"CN"] || [userLocale.countryCode containsString: @"CHN"]) {
+        resolve(@"true");
+    } else {
+        resolve(@"false");
+    }
 }
+
+RCT_EXPORT_METHOD(setCallback:(RCTResponseSenderBlock)callback) {
+    self.noCallKitCallback = callback;
+    self.isChineseRegion = YES;
+}
+
 
 RCT_EXPORT_METHOD(disconnect) {
   NSLog(@"Disconnecting call");
